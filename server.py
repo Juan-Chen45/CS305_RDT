@@ -22,3 +22,4 @@ if __name__ == '__main__':
         '''
         conn.close()
         print(f'connection finished in {time.perf_counter() - start}s')
+

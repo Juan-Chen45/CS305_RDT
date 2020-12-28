@@ -2,7 +2,7 @@ from USocket import UnreliableSocket
 import threading
 import time
 import struct
-
+import _thread
 
 def make_check_sum(data: bytes):
     sum: int = 0
@@ -99,7 +99,7 @@ class RDTSocket(UnreliableSocket):
         self.sender = False
         # 已经成功接受到的对方的seq
         self.ack = 0
-        self.timeoutTime = 5
+        self.timeoutTime = 1
         self.windowSize = 10
 
         # by ljc
@@ -108,9 +108,12 @@ class RDTSocket(UnreliableSocket):
         self.dev = 0
         self.beta = 0.25
         self.ssthresh = 15
+        self.flag = False
+        self.data = None
+        self.address = None
 
         # by cjy
-        self.thread_terminate = True
+        # self.thread_terminate = True
         #############################################################################
         #                             END OF YOUR CODE                              #
         #############################################################################
@@ -387,7 +390,7 @@ class RDTSocket(UnreliableSocket):
             # 发所有上一个ack之后的包
             for p in window[windowmax:top+self.windowSize]:
                 self.sendto(p.encode(), self._send_to)
-                time.sleep(0.1)
+                # time.sleep(0.1)
                 print(p)
             windowmax = top + self.windowSize
 
@@ -395,23 +398,28 @@ class RDTSocket(UnreliableSocket):
             # print("waiting for ack")
 
             # 多线程事件标志位正确,则重新赋值所有
-            if (self.thread_terminate):
-                eve = threading.Event()
-                rcv_thread = MyTread(eve, self, self.buffer)
-                rcv_thread.start()
+            # if (self.thread_terminate):
+            #     eve = threading.Event()
+            #     rcv_thread = MyTread(eve, self, self.buffer)
+            #     rcv_thread.start()
 
             while True:
                 nowTime = time.time()
-                diffTime = nowTime - sendTime -500
+                diffTime = nowTime - sendTime
                 if diffTime > self.timeoutTime:
                     self.ssthresh = self.windowSize/2
                     self.windowSize = 1
-                    self.thread_terminate = False
+                    # self.thread_terminate = False
                     break
 
-                if(eve.is_set()):
-                    data, address = rcv_thread.get_result()
+                self.parent(self.timeoutTime - diffTime)
+                if(self.flag == True):
+                    self.flag = False
+                    # data, address = rcv_thread.get_result()
+                    data = self.data
+                    address = self.address
                     # 地址不对，回去重新收
+
                     if address != self._send_to:
                         print("recv ack form wrong address")
                         continue
@@ -422,9 +430,9 @@ class RDTSocket(UnreliableSocket):
                             print("wrong ack with ack too small or already acked:", recvPack)
                             continue
                         # 清除标志位
-                        eve.clear()
-                        # 结束这一个子线程
-                        rcv_thread.join()
+                        # eve.clear()
+                        # # 结束这一个子线程
+                        # rcv_thread.join()
 
                     # if self.debug:
                         print("ack accept ", recvPack)
@@ -476,7 +484,10 @@ class RDTSocket(UnreliableSocket):
         self.beta = 0.25
         self.ssthresh = 15
         # by cjy
-        self.thread_terminate = True
+        # self.thread_terminate = True
+        self.data = None
+        self.address = None
+        self.flag = False
 
     def close(self):
         """
@@ -502,22 +513,37 @@ class RDTSocket(UnreliableSocket):
         self._recv_from = recv_from
 
 
+    def parent(self,t):
+        self.flag = False
+        son = _thread.start_new_thread(self.test, ())
+        start_time = time.time()
+        print("test")
+        while time.time() - start_time < t:
+            if self.flag == True:
+                # print("get data!")
+                return
+
+    def test(self):
+        self.data,self.address = self.recvfrom(self.buffer)
+        self.flag = True
+
+
 
 """
 You can define additional functions and classes to do thing such as packing/unpacking packets, or threading.
 
 """
-class MyTread(threading.Thread):
-    def __init__(self,event,rdt,buffer):
-        super().__init__()
-        self.event = event
-        self.rdt = rdt
-        self.buffer = buffer
-    def run(self):
-        self.data,self.address = self.rdt.recvfrom(self.buffer)
-        # 接收完成之后就把标志位设置为True
-        self.event.set()
-
-    def get_result(self):
-        return (self.data,self.address)
+# class MyTread(threading.Thread):
+#     def __init__(self,event,rdt,buffer):
+#         super().__init__()
+#         self.event = event
+#         self.rdt = rdt
+#         self.buffer = buffer
+#     def run(self):
+#         self.data,self.address = self.rdt.recvfrom(self.buffer)
+#         # 接收完成之后就把标志位设置为True
+#         self.event.set()
+#
+#     def get_result(self):
+#         return (self.data,self.address)
 
