@@ -4,6 +4,7 @@ import time
 import struct
 import _thread
 
+
 def make_check_sum(data: bytes):
     sum: int = 0
     for byte in data:
@@ -113,19 +114,19 @@ class RDTSocket(UnreliableSocket):
         self.address = None
 
         # by cjy
-        # self.thread_terminate = True
+        self.thread_terminate = True
         #############################################################################
         #                             END OF YOUR CODE                              #
         #############################################################################
 
     def accept(self):  # ->(RDTSocket, (str, int)):
         """
-        Accept a connection. The socket must be bound to an address and listening for 
-        connections. The return value is a pair (conn, address) where conn is a new 
-        socket object usable to send and receive data on the connection, and address 
+        Accept a connection. The socket must be bound to an address and listening for
+        connections. The return value is a pair (conn, address) where conn is a new
+        socket object usable to send and receive data on the connection, and address
         is the address bound to the socket on the other end of the connection.
 
-        This function should be blocking. 
+        This function should be blocking.
         """
         #############################################################################
         # TODO: YOUR CODE HERE                                                      #
@@ -249,10 +250,10 @@ class RDTSocket(UnreliableSocket):
 
     def recv(self, bufsize: int) -> bytes:
         """
-        Receive data from the socket. 
-        The return value is a bytes object representing the data received. 
-        The maximum amount of data to be received at once is specified by bufsize. 
-        
+        Receive data from the socket.
+        The return value is a bytes object representing the data received.
+        The maximum amount of data to be received at once is specified by bufsize.
+
         Note that ONLY data send by the peer should be accepted.
         In other words, if someone else sends data to you from another address,
         it MUST NOT affect the data returned by this function.
@@ -295,7 +296,7 @@ class RDTSocket(UnreliableSocket):
                 continue
 
             start_time = time.time()
-            print("receive: ",recvPack)
+            print("receive: ", recvPack)
 
             # ack不用超时重发
             # if self.debug:
@@ -318,7 +319,7 @@ class RDTSocket(UnreliableSocket):
             ackPack = Packet(seqack=self.ack, fin=recvPack.fin, ack=1)
             self.sendto(ackPack.encode(), self._recv_from)
             # print("ack pack", ackPack)
-                # packcount = 0
+            # packcount = 0
 
             if recvPack.fin == 1:
                 print("finish receiving")
@@ -340,7 +341,7 @@ class RDTSocket(UnreliableSocket):
 
     def send(self, bytes: bytes):
         """
-        Send data to the socket. 
+        Send data to the socket.
         The socket must be connected to a remote socket, i.e. self._send_to must not be none.
         """
         assert self._send_to, "Connection not established yet. Use sendto instead."
@@ -365,8 +366,8 @@ class RDTSocket(UnreliableSocket):
         # send是已经发送过的最高的
         windowmax = 0
         # 相应事件，子线程
-        eve = None
-        rcv_thread = None
+        # eve = None
+        # rcv_thread = None
         # 先把整个windows填满
         localseq = self.seq + 1
         while windowmax < packetnum:
@@ -388,7 +389,7 @@ class RDTSocket(UnreliableSocket):
             # 从现在开始计时，当成是发送第一个包的时间
             sendTime = time.time()
             # 发所有上一个ack之后的包
-            for p in window[windowmax:top+self.windowSize]:
+            for p in window[windowmax:top + self.windowSize]:
                 self.sendto(p.encode(), self._send_to)
                 # time.sleep(0.1)
                 print(p)
@@ -402,24 +403,26 @@ class RDTSocket(UnreliableSocket):
             #     eve = threading.Event()
             #     rcv_thread = MyTread(eve, self, self.buffer)
             #     rcv_thread.start()
+            self.parent(self.timeoutTime)
 
             while True:
                 nowTime = time.time()
                 diffTime = nowTime - sendTime
                 if diffTime > self.timeoutTime:
-                    self.ssthresh = self.windowSize/2
+                    self.ssthresh = self.windowSize / 2
                     self.windowSize = 1
+                    print(123)
+                    windowmax = top
                     # self.thread_terminate = False
                     break
 
-                self.parent(self.timeoutTime - diffTime)
-                if(self.flag == True):
+
+                if (self.flag == True):
                     self.flag = False
                     # data, address = rcv_thread.get_result()
                     data = self.data
                     address = self.address
                     # 地址不对，回去重新收
-
                     if address != self._send_to:
                         print("recv ack form wrong address")
                         continue
@@ -431,19 +434,19 @@ class RDTSocket(UnreliableSocket):
                             continue
                         # 清除标志位
                         # eve.clear()
-                        # # 结束这一个子线程
+                        # 结束这一个子线程
                         # rcv_thread.join()
 
-                    # if self.debug:
+                        # if self.debug:
                         print("ack accept ", recvPack)
-                    #     print("change self seq= ", self.seq, " self ack= ", self.ack)
+                        #     print("change self seq= ", self.seq, " self ack= ", self.ack)
 
                         # 更新timeoutTime和rtt,windowSize
                         if recvPack.seqack == self.seq:
                             if (self.rtt == 0):
                                 self.rtt = diffTime
                             else:
-                                self.rtt =(1 - self.alpha) * self.rtt + self.alpha * diffTime
+                                self.rtt = (1 - self.alpha) * self.rtt + self.alpha * diffTime
 
                             self.dev = (1 - self.beta) * self.dev + self.beta * abs(diffTime - self.rtt)
                             self.timeoutTime = self.rtt + 4 * self.dev
@@ -483,11 +486,11 @@ class RDTSocket(UnreliableSocket):
         self.dev = 0
         self.beta = 0.25
         self.ssthresh = 15
-        # by cjy
-        # self.thread_terminate = True
+        self.flag = False
         self.data = None
         self.address = None
-        self.flag = False
+        # by cjy
+        self.thread_terminate = True
 
     def close(self):
         """
@@ -512,38 +515,40 @@ class RDTSocket(UnreliableSocket):
     def set_recv_from(self, recv_from):
         self._recv_from = recv_from
 
-
-    def parent(self,t):
+    def parent(self, t):
         self.flag = False
         son = _thread.start_new_thread(self.test, ())
         start_time = time.time()
-        print("test")
+        # print("test")
         while time.time() - start_time < t:
             if self.flag == True:
                 # print("get data!")
                 return
 
     def test(self):
-        self.data,self.address = self.recvfrom(self.buffer)
+        self.data, self.address = self.recvfrom(self.buffer)
         self.flag = True
-
 
 
 """
 You can define additional functions and classes to do thing such as packing/unpacking packets, or threading.
 
 """
-# class MyTread(threading.Thread):
-#     def __init__(self,event,rdt,buffer):
-#         super().__init__()
-#         self.event = event
-#         self.rdt = rdt
-#         self.buffer = buffer
-#     def run(self):
-#         self.data,self.address = self.rdt.recvfrom(self.buffer)
-#         # 接收完成之后就把标志位设置为True
-#         self.event.set()
-#
-#     def get_result(self):
-#         return (self.data,self.address)
+
+
+class MyTread(threading.Thread):
+    def __init__(self, event, rdt, buffer):
+        super().__init__()
+        self.event = event
+        self.rdt = rdt
+        self.buffer = buffer
+
+    def run(self):
+        self.data, self.address = self.rdt.recvfrom(self.buffer)
+        # 接收完成之后就把标志位设置为True
+        self.event.set()
+
+    def get_result(self):
+        return (self.data, self.address)
+
 
