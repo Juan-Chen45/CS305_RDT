@@ -320,7 +320,7 @@ class RDTSocket(UnreliableSocket):
             if recvPack.fin == 1:
                 print("finish receiving")
                 ackPack = Packet(seqack=self.ack, fin=recvPack.fin, ack=1)
-                nowTime = time.time()
+                # nowTime = time.time()
                 # while time.time() - nowTime < 5:
                 self.sendto(ackPack.encode(), self._recv_from)
                 print("send finish ack", ackPack)
@@ -329,9 +329,7 @@ class RDTSocket(UnreliableSocket):
         time.sleep(1)
         # print("packet rcv: ", packcount)
         # by cjy
-        self.seq = 1
-        self.ack = 1
-        self.windowSize = 10
+        self.clear_out()
         #############################################################################
         #                             END OF YOUR CODE                              #
         #############################################################################
@@ -452,49 +450,34 @@ class RDTSocket(UnreliableSocket):
 
                         if recvPack.fin == 1:
                             # cjy
-                            self.seq = 1
-                            self.ack = 1
-                            self.windowSize = 10
+                            self.clear_out()
                             time.sleep(5)
-                            i = 0
-                            for p in window:
-                                i += 1
-                                print(i, " seq: ", p.seq, "ack: ", p.ack)
+                            # i = 0
+                            # for p in window:
+                            #     i += 1
+                            #     print(i, " seq: ", p.seq, "ack: ", p.ack)
                             return
                         break
         time.sleep(1)
 
-        #############################################################################
-        #                             END OF YOUR CODE                              #
-        #############################################################################
+    def clear_out(self):
+        self.seq = 1
+        self.ack = 1
+        self.windowSize = 10
+        self.buffer = 2048
+        # 已经发送到的seq
+        # 已经成功接受到的对方的seq
+        self.timeoutTime = 5
+        self.windowSize = 10
+        # by ljc
+        self.rtt = 0
+        self.alpha = 0.125
+        self.dev = 0
+        self.beta = 0.25
+        self.ssthresh = 15
+        # by cjy
+        self.thread_terminate = True
 
-    # def close(self):
-    #     """
-    #     Finish the connection and release resources. For simplicity, assume that
-    #     after a socket is closed, neither futher sends nor receives are allowed.
-    #     """
-    #     #############################################################################
-    #     # TODO: YOUR CODE HERE                                                      #
-    #     #############################################################################
-    #     if self._send_to is not None:
-    #         flag = True
-    #         while flag:
-    #             packet = Packet(fin=1, seqack=self.ack, seq=self.seq+1)
-    #             self.sendto(packet.encode(), self._send_to)
-    #             # 对面回了就结束
-    #             formertime = time.time()
-    #             while time.time() - formertime < self.timeoutTime:
-    #                 data, addr = self.recvfrom(self.buffer)
-    #                 if addr != self._send_to:
-    #                     continue
-    #                 recv = Packet()
-    #                 recv.decode(data)
-    #                 if (not recv.check_checksum()) or recv.fin != 1 or recv.ack != packet.seq:
-    #                     continue
-    #                 # 成功收到
-    #                 flag = False
-    #                 break
-    #         self._send_to = None
     def close(self):
         """
         Finish the connection and release resources. For simplicity, assume that
