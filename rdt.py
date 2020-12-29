@@ -100,7 +100,7 @@ class RDTSocket(UnreliableSocket):
         self.sender = False
         # 已经成功接受到的对方的seq
         self.ack = 0
-        self.timeoutTime = 1
+        self.timeoutTime = 2
         self.windowSize = 10
 
         # by ljc
@@ -413,9 +413,7 @@ class RDTSocket(UnreliableSocket):
                     self.windowSize = 1
                     print(123)
                     windowmax = top
-                    # self.thread_terminate = False
                     break
-
 
                 if (self.flag == True):
                     self.flag = False
@@ -432,29 +430,24 @@ class RDTSocket(UnreliableSocket):
                         if recvPack.seqack < self.seq:
                             print("wrong ack with ack too small or already acked:", recvPack)
                             continue
-                        # 清除标志位
-                        # eve.clear()
-                        # 结束这一个子线程
-                        # rcv_thread.join()
-
-                        # if self.debug:
                         print("ack accept ", recvPack)
                         #     print("change self seq= ", self.seq, " self ack= ", self.ack)
 
                         # 更新timeoutTime和rtt,windowSize
-                        if recvPack.seqack == self.seq:
-                            if (self.rtt == 0):
-                                self.rtt = diffTime
-                            else:
-                                self.rtt = (1 - self.alpha) * self.rtt + self.alpha * diffTime
+                        # if recvPack.seqack == self.seq:
+                        #     if (self.rtt == 0):
+                        #         self.rtt = diffTime
+                        #     else:
+                        #         self.rtt = (1 - self.alpha) * self.rtt + self.alpha * diffTime
+                        #
+                        #     self.dev = (1 - self.beta) * self.dev + self.beta * abs(diffTime - self.rtt)
+                        #     self.timeoutTime = self.rtt + 4 * self.dev
+                        #
+                        # if self.windowSize < self.ssthresh:
+                        #     self.windowSize = self.windowSize * 2
+                        # else:
+                        #     self.windowSize = self.windowSize + 1
 
-                            self.dev = (1 - self.beta) * self.dev + self.beta * abs(diffTime - self.rtt)
-                            self.timeoutTime = self.rtt + 4 * self.dev
-
-                        if self.windowSize < self.ssthresh:
-                            self.windowSize = self.windowSize * 2
-                        else:
-                            self.windowSize = self.windowSize + 1
 
                         top += recvPack.seqack - self.seq
                         self.seq = recvPack.seqack
@@ -462,11 +455,7 @@ class RDTSocket(UnreliableSocket):
                         if recvPack.fin == 1:
                             # cjy
                             self.clear_out()
-                            time.sleep(5)
-                            # i = 0
-                            # for p in window:
-                            #     i += 1
-                            #     print(i, " seq: ", p.seq, "ack: ", p.ack)
+                            time.sleep(1)
                             return
                         break
         time.sleep(1)

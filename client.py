@@ -11,7 +11,7 @@ if __name__ == '__main__':
     echo = b''
     count = 5
     slice_size = 2048
-    blocking_send = False
+    blocking_send = True
 
     with open('alice.txt', 'r') as f:
         data = f.read()
@@ -33,6 +33,7 @@ if __name__ == '__main__':
                 client.send(slice)
                 reply = client.recv(slice_size)
                 echo += reply
+                print("length of echo: ",len(echo))
     else:
         print('transmit in mode B')
         start = time.perf_counter()
