@@ -100,7 +100,9 @@ class RDTSocket(UnreliableSocket):
         self.sender = False
         # 已经成功接受到的对方的seq
         self.ack = 0
+        # 发端超时时间
         self.timeoutTime = 2
+        # 动态变化的window_size
         self.windowSize = 10
 
         # by ljc
@@ -295,7 +297,6 @@ class RDTSocket(UnreliableSocket):
                 self.sendto(ackPack.encode(), self._recv_from)
                 continue
 
-            start_time = time.time()
             print("receive: ", recvPack)
 
             # ack不用超时重发
@@ -307,31 +308,19 @@ class RDTSocket(UnreliableSocket):
             data += recvPack.data
             packcount += 1
 
-            # print(packcount, " rcv seq: ", recvPack.seq, "rcv ack: ", recvPack.ack)
-            #
-            # if self.debug:
-            #     count += 1
-            #     print("count change: ", count)
-            # packcount 没到windowsize就是之前有错的包 已经会ack错误的了
-
-            # if packcount == 10:
-            #     print("get a full window,send ack")
-            ackPack = Packet(seqack=self.ack, fin=recvPack.fin, ack=1)
-            self.sendto(ackPack.encode(), self._recv_from)
-            # print("ack pack", ackPack)
-            # packcount = 0
+            if recvPack.fin != 1:
+                ackPack = Packet(seqack=self.ack, fin=recvPack.fin, ack=1)
+                self.sendto(ackPack.encode(), self._recv_from)
+                print("send ack pack", ackPack)
 
             if recvPack.fin == 1:
                 print("finish receiving")
                 ackPack = Packet(seqack=self.ack, fin=recvPack.fin, ack=1)
-                # nowTime = time.time()
-                # while time.time() - nowTime < 5:
                 self.sendto(ackPack.encode(), self._recv_from)
                 print("send finish ack", ackPack)
                 break
 
-        time.sleep(1)
-        # print("packet rcv: ", packcount)
+        # time.sleep(1)
         # by cjy
         self.clear_out()
         #############################################################################
@@ -394,15 +383,6 @@ class RDTSocket(UnreliableSocket):
                 # time.sleep(0.1)
                 print(p)
             windowmax = top + self.windowSize
-
-            # 等一个ack,决定下一个发哪个
-            # print("waiting for ack")
-
-            # 多线程事件标志位正确,则重新赋值所有
-            # if (self.thread_terminate):
-            #     eve = threading.Event()
-            #     rcv_thread = MyTread(eve, self, self.buffer)
-            #     rcv_thread.start()
             self.parent(self.timeoutTime)
 
             while True:
@@ -411,13 +391,11 @@ class RDTSocket(UnreliableSocket):
                 if diffTime > self.timeoutTime:
                     self.ssthresh = self.windowSize / 2
                     self.windowSize = 1
-                    print(123)
                     windowmax = top
                     break
 
                 if (self.flag == True):
                     self.flag = False
-                    # data, address = rcv_thread.get_result()
                     data = self.data
                     address = self.address
                     # 地址不对，回去重新收
@@ -431,22 +409,11 @@ class RDTSocket(UnreliableSocket):
                             print("wrong ack with ack too small or already acked:", recvPack)
                             continue
                         print("ack accept ", recvPack)
-                        #     print("change self seq= ", self.seq, " self ack= ", self.ack)
 
-                        # 更新timeoutTime和rtt,windowSize
-                        # if recvPack.seqack == self.seq:
-                        #     if (self.rtt == 0):
-                        #         self.rtt = diffTime
-                        #     else:
-                        #         self.rtt = (1 - self.alpha) * self.rtt + self.alpha * diffTime
-                        #
-                        #     self.dev = (1 - self.beta) * self.dev + self.beta * abs(diffTime - self.rtt)
-                        #     self.timeoutTime = self.rtt + 4 * self.dev
-                        #
-                        # if self.windowSize < self.ssthresh:
-                        #     self.windowSize = self.windowSize * 2
-                        # else:
-                        #     self.windowSize = self.windowSize + 1
+                        if self.windowSize < self.ssthresh:
+                            self.windowSize = self.windowSize * 2
+                        else:
+                            self.windowSize = self.windowSize + 1
 
 
                         top += recvPack.seqack - self.seq
@@ -458,7 +425,7 @@ class RDTSocket(UnreliableSocket):
                             time.sleep(1)
                             return
                         break
-        time.sleep(1)
+        # time.sleep(1)
 
     def clear_out(self):
         self.seq = 1
