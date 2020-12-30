@@ -11,7 +11,7 @@ if __name__ == '__main__':
     echo = b''
     count = 5
     slice_size = 2048
-    blocking_send = True
+    blocking_send = False
 
     with open('alice.txt', 'r') as f:
         data = f.read()

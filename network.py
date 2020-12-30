@@ -23,7 +23,7 @@ def corrupt(data: bytes) -> bytes:
 
 
 class Server(ThreadingUDPServer):
-    def __init__(self, addr, rate=10240, delay=None, corrupt=None):
+    def __init__(self, addr, rate=10240, delay=1, corrupt=1):
         super().__init__(addr, None)
         self.rate = rate
         self.buffer = 0

@@ -101,7 +101,7 @@ class RDTSocket(UnreliableSocket):
         # 已经成功接受到的对方的seq
         self.ack = 0
         # 发端超时时间
-        self.timeoutTime = 2
+        self.timeoutTime = 1
         # 动态变化的window_size
         self.windowSize = 10
 
@@ -323,6 +323,7 @@ class RDTSocket(UnreliableSocket):
         # time.sleep(1)
         # by cjy
         self.clear_out()
+        time.sleep(0.5)
         #############################################################################
         #                             END OF YOUR CODE                              #
         #############################################################################
@@ -342,6 +343,8 @@ class RDTSocket(UnreliableSocket):
         print(length)
         packetnum = int(length / MAX_PACK_LEN) + 1
         top = 0
+        lastack = -1
+        lastack_count = 0
         print("------------------start sending----------------------")
         print("self seq= ", self.seq, " self ack= ", self.ack)
         print("pack to send: ", packetnum, " send to ", self._send_to)
@@ -408,6 +411,19 @@ class RDTSocket(UnreliableSocket):
                         if recvPack.seqack < self.seq:
                             print("wrong ack with ack too small or already acked:", recvPack)
                             continue
+                        if recvPack.seqack == lastack:
+
+                            if lastack_count <3:
+                                 lastack_count +=1
+                            else:
+                                 windowmax = top
+                                 lastack_count = 0
+                                 break
+
+                        if recvPack.seqack != lastack:
+                            lastack = recvPack.seqack
+                            lastack_count = 0
+
                         print("ack accept ", recvPack)
 
                         if self.windowSize < self.ssthresh:
@@ -425,7 +441,7 @@ class RDTSocket(UnreliableSocket):
                             time.sleep(1)
                             return
                         break
-        # time.sleep(1)
+        time.sleep(0.5)
 
     def clear_out(self):
         self.seq = 1
